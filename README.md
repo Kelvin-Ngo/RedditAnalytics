@@ -10,7 +10,7 @@ RedditAnalysis is a python script that does basic data gathering from Reddit.
 You need a Reddit account in order to operate this script.
 - 1.)	Using pip, install Pandas and Matplotlib
 - 2.) Download the CommandParse script and open it in an IDE, at the bottom of the code are sections asking for a username and password, set those items equal to your reddit username and password. Note that there are still two unused sections, client_id and client_secret. These will be discussed later.
-- 3.)	Now you need to create an app in Reddit. Go to https://www.reddit.com/prefs/apps/ and login to Reddit. Once you’re logged in, navigate to the “create an app” button and create a new script. Name and description can be anything of your choosing. An about URL is not required but a redirect URL is, use ht<span>tp://</span>“http://localhost:8888”.
+- 3.)	Now you need to create an app in Reddit. Go to https://www.reddit.com/prefs/apps/ and login to Reddit. Once you’re logged in, navigate to the “create an app” button and create a new script. Name and description can be anything of your choosing. An about URL is not required but a redirect URL is, use "ht<span>tp://</span>localhost:8888”.
 - 4.)	Once the app is created, locate the app’s personal use script and secret id. These are the client_id and client_secret that was mentioned in step 1. Copy these down into the script
 - 5.)	The script is now ready for use. Run it through an IDE like PyCharm or through the command line
 
