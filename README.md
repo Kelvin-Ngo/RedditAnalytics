@@ -8,7 +8,8 @@ RedditAnalysis is a python script that does basic data gathering from Reddit.
 
 # How To Use:
 You need a Reddit account in order to operate this script.
- Markup : 1. A numbered list
-              1. A nested numbered list
-              2. Which is numbered
-          2. Which is numbered
+- Item 1
+- Item 2
+  - Sub Item 1
+  - Sub Item 2
+
