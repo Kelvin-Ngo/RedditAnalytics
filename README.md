@@ -13,5 +13,14 @@ You need a Reddit account in order to operate this script.
 - 3.)	Now you need to create an app in Reddit. Login to Reddit and then go to think link:https://www.reddit.com/prefs/apps/. Once you’re logged in, navigate to the “create an app” button and create a new script. Name and description can be anything of your choosing. An about URL is not required but a redirect URL is, use "ht<span>tp://</span>localhost:8888”.
 - 4.)	Once the app is created, locate the app’s personal use script and secret id. These are the client_id and client_secret that was mentioned in step 1. Copy these down into the script
 - 5.)	The script is now ready for use. Run it through an IDE like PyCharm or through the command line
+<br/><br/>
 
+# Planned Changes:
+- Make the script easier to setup. Try to authenticate users without having to setup an app on Reddit
+- Store data in a database rather than a pickle file
+- For post tracking and monitoring data over time, streamline with Cron
+- Automate tracking popular subreddits
+<br/><br/>
+
+If you have and suggestions, questions, or comments; please email me at kelvin.programming@gmail.com
 
