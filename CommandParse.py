@@ -33,13 +33,9 @@ def subreddit():
 
     for submission in submissions:
         print(submission.title)
-        # Output: the submission's title
         print(submission.score)
-        # Output: the submission's score
         print(submission.id)
-        # Output: the submission's ID
         print(submission.url)
-        # Output: the URL the submission points to or the submission's URL if it's a self post
 
 
 def users():
@@ -67,17 +63,18 @@ def popular():
 
     # TODO: Look into storing in a database instead a of pickle file.
     save_file_popular(new_submissions, top_subreddits, SAVE_FILE)
-    excel_pie_chart(top_subreddits)
+    plot_pie_chart(top_subreddits)
 
 
 def posts():
     print("Enter ID:")
     s_id = input()
     submission = reddit.submission(s_id)
-    score = str(submission.score)
-    upvote_ratio = str(submission.upvote_ratio)
-    num_comments = str(submission.num_comments)
-    print(submission.title + "\nscore: " + score + "\nupvote_ratio: " + upvote_ratio + "\nnum_comments: " + num_comments)
+    score = submission.score
+    upvote_ratio = submission.upvote_ratio
+    num_comments = submission.num_comments
+    print(submission.title + "\nscore: " + str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments: " +
+          str(num_comments))
     return s_id, score, upvote_ratio, num_comments
 
 
@@ -95,13 +92,14 @@ def track_post():
     print("How long do you want to track this post?: __ minutes")
     track_time = input()
     print("How long do you want the intervals to be between checking the post?: __ minutes")
-    interval_length = int(input())
+    interval_length = int(input()) * 60
     curr_date = datetime.now()
     end_time = curr_date + timedelta(minutes=int(track_time))
     file_name = str(s_id) + "_track_post"
 
     try:
         post_data = open_file(file_name)
+        plot_line_chart(post_data)
     except OSError:
         post_data = []
 
@@ -113,8 +111,18 @@ def track_post():
         score, upvote_ratio, num_comments = retrieve_post_info(s_id)
         print("\nscore: "+str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments:" + str(num_comments))
 
+    plot_line_chart(post_data)
 
-def excel_pie_chart(new_submissions):
+
+def plot_line_chart(data):
+    df = pd.DataFrame(data)
+    df.columns = ['score', 'upvote_ratio', 'num_comments', 'time']
+    print(df)
+    df.set_index("time").plot(y=0)
+    plt.show()
+
+
+def plot_pie_chart(new_submissions):
     df = pd.DataFrame(new_submissions, index=[0]).transpose()
     print(df)
     df.plot.pie(y=0)
