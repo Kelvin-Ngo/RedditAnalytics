@@ -1,18 +1,21 @@
+import concurrent.futures
+import os
 from datetime import datetime
 from datetime import timedelta
+import matplotlib.pyplot as plt
+import pandas as pd
 import pickle
 import praw
-import pandas as pd
-import matplotlib.pyplot as plt
 import time
 
-REDDIT_POPULAR = './reddit_popular.csv'
-SAVE_FILE = './reddit_popular_data.pkl'
+REDDIT_POPULAR = './data/reddit_popular.csv'
+POP_SAVE_FILE = './data/reddit_popular_data.pkl'
+SAVE_FILE_DIR = './data/'
 user_data = False
 
 
 # required installations:
-# pandas, matplotlib
+# pandas, matplotlib, schedule
 
 
 def subreddit():
@@ -49,12 +52,13 @@ def users():
 
 
 # TODO: Because this goes through 1000 entries the processing can be slow. Consider doing this multithreaded
+# TODO: Run this off of AWS so it can continuously run
 def popular():
     new_submissions = dict()
     top_subreddits = dict()
     submissions = reddit.subreddit("popular").hot(limit=1000)
     try:
-        [popular_submissions, top_subreddits] = open_file(SAVE_FILE)
+        [popular_submissions, top_subreddits] = open_file(POP_SAVE_FILE)
         parse_submissions(submissions, new_submissions, popular_submissions, True, top_subreddits)
     # TODO: OSError may be for something other than file not found, be sure to check
     except OSError:
@@ -62,7 +66,7 @@ def popular():
         parse_submissions(submissions, new_submissions, popular_submissions, False, top_subreddits)
 
     # TODO: Look into storing in a database instead a of pickle file.
-    save_file_popular(new_submissions, top_subreddits, SAVE_FILE)
+    save_file_popular(new_submissions, top_subreddits, POP_SAVE_FILE)
     plot_pie_chart(top_subreddits)
 
 
@@ -73,9 +77,7 @@ def posts():
     score = submission.score
     upvote_ratio = submission.upvote_ratio
     num_comments = submission.num_comments
-    print(submission.title + "\nscore: " + str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments: " +
-          str(num_comments))
-    return s_id, score, upvote_ratio, num_comments
+    return s_id, score, upvote_ratio, num_comments, submission.title
 
 
 def retrieve_post_info(s_id):
@@ -83,35 +85,52 @@ def retrieve_post_info(s_id):
     return submission.score, submission.upvote_ratio, submission.num_comments
 
 
-# https://medium.com/greedygame-engineering/an-elegant-way-to-run-periodic-tasks-in-python-61b7c477b679
-# https://ostechnix.com/a-beginners-guide-to-cron-jobs/
-# TODO: Best to try to do this through a virtual environment
-# Cron vs timer? which one is better
-def track_post():
-    s_id, score, upvote_ratio, num_comments = posts()
+def init_track_post():
+    s_id, score, upvote_ratio, num_comments, title = posts()
+    print(title + "\nscore: " + str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments: " +
+          str(num_comments))
     print("How long do you want to track this post?: __ minutes")
     track_time = input()
     print("How long do you want the intervals to be between checking the post?: __ minutes")
     interval_length = int(input()) * 60
     curr_date = datetime.now()
     end_time = curr_date + timedelta(minutes=int(track_time))
-    file_name = str(s_id) + "_track_post"
-
+    file_name = SAVE_FILE_DIR + str(s_id) + "_track_post"
     try:
         post_data = open_file(file_name)
-        plot_line_chart(post_data)
     except OSError:
         post_data = []
 
+    print(str(s_id) + " is now being tracked")
+
+    # Threadpool may be better. If user tries to monitor too many posts then it creates too many threads
+    # Also need to check if the context switch is switching in the designated interval length
+    args = [post_data, interval_length, end_time, file_name, s_id]
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(track_post, post_data, interval_length, end_time, file_name, s_id)
+        input_parsing()
+
+        result_val = future.result()
+
+    plot_line_chart(result_val)
+
+
+# https://medium.com/greedygame-engineering/an-elegant-way-to-run-periodic-tasks-in-python-61b7c477b679
+# https://ostechnix.com/a-beginners-guide-to-cron-jobs/
+# TODO: Best to try to do this through a virtual environment
+# Cron vs timer? which one is better
+# Perhaps use threads so users can do something else while this is running
+def track_post(post_data, interval_length, end_time, file_name, s_id):
+    score, upvote_ratio, num_comments = retrieve_post_info(s_id)
+    curr_date = datetime.now()
     while curr_date < end_time:
         post_data.append((score, upvote_ratio, num_comments, datetime.now()))
         save_file_track_post(post_data, file_name)
         time.sleep(interval_length)
         curr_date = datetime.now()
         score, upvote_ratio, num_comments = retrieve_post_info(s_id)
-        print("\nscore: "+str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments:" + str(num_comments))
 
-    plot_line_chart(post_data)
+    return post_data
 
 
 def plot_line_chart(data):
@@ -119,6 +138,8 @@ def plot_line_chart(data):
     df.columns = ['score', 'upvote_ratio', 'num_comments', 'time']
     print(df)
     df.set_index("time").plot(y=0)
+    df.set_index("time").plot(y=1)
+    df.set_index("time").plot(y=2)
     plt.show()
 
 
@@ -192,6 +213,10 @@ def parse_submissions(submissions, new_submissions, popular_submissions, has_dic
 
 
 def input_parsing():
+    if not os.path.isdir("./data"):
+        path = os.path.join("./", "data")
+        os.mkdir(path)
+
     print("Search through: [subreddit | users | popular | posts | track post]")
     user_input = input()
     if user_input == 'subreddit':
@@ -201,7 +226,7 @@ def input_parsing():
     elif user_input == 'posts':
         posts()
     elif user_input == 'track post':
-        track_post()
+        init_track_post()
     else:
         popular()
 
