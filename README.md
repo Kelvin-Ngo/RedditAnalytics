@@ -24,7 +24,7 @@ You need a Reddit account in order to operate this script.
 - Will gather the top 1000 posts in popular and aggregate them into a file. Will track the most popular subreddits on Reddit
 #### posts ####
 - will asked for an id of a reddit post and return the post's name, number of comments, and like ratio. The id of a reddit post is specified in the URL of that post in the format of:
-http://<span></span>www.reddit.com/r/[subreddit]/comments/[id]/[post title]/
+http://<span></span>www<span></span>.reddit.com<span></span>/r/[subreddit]/comments/[id]/[post title]/
 #### track posts ####
 - will monitor the specified post's number of comments, number of upvotes, and upvote ratio based on the id entered. You can specifed the interval length it checks and how long to monitor the post
 #### plot line graph ####
