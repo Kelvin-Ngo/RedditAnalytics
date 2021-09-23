@@ -1,11 +1,13 @@
 import concurrent.futures
-import os
 from datetime import datetime
 from datetime import timedelta
+import json
 import matplotlib.pyplot as plt
+import os
 import pandas as pd
 import pickle
 import praw
+import prawcore
 import time
 
 REDDIT_POPULAR = './data/reddit_popular.csv'
@@ -26,13 +28,21 @@ def subreddit():
     print("Sort by: [hot | new | top]")
     sort_order = input()
 
+    # check to see if you can use a version of switch statements or something similar. if elif for the same variable
+    # seems inefficient
     subreddit = reddit.subreddit(subreddit_name)
     if sort_order == 'top':
         submissions = subreddit.top(limit=10)
     elif sort_order == 'new':
         submissions = subreddit.new(limit=10)
-    else:
+    elif sort_order == 'hot':
         submissions = subreddit.hot(limit=10)
+    else:
+        print("invalid sort_order. Would you like to quit? [Y/N]")
+        if input() == 'Y':
+            input_parsing()
+        else:
+            subreddit()
 
     for submission in submissions:
         print(submission.title)
@@ -86,33 +96,35 @@ def retrieve_post_info(s_id):
 
 
 def init_track_post():
-    s_id, score, upvote_ratio, num_comments, title = posts()
-    print(title + "\nscore: " + str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments: " +
-          str(num_comments))
-    print("How long do you want to track this post?: __ minutes")
-    track_time = input()
-    print("How long do you want the intervals to be between checking the post?: __ minutes")
-    interval_length = int(input()) * 60
-    curr_date = datetime.now()
-    end_time = curr_date + timedelta(minutes=int(track_time))
-    file_name = SAVE_FILE_DIR + str(s_id) + "_track_post"
     try:
-        post_data = open_file(file_name)
-    except OSError:
-        post_data = []
+        s_id, score, upvote_ratio, num_comments, title = posts()
+        print(title + "\nscore: " + str(score) + "\nupvote_ratio: " + str(upvote_ratio) + "\nnum_comments: " +
+              str(num_comments))
+        print("How long do you want to track this post?: __ minutes")
+        track_time = input()
+        print("How long do you want the intervals to be between checking the post?: __ minutes")
+        interval_length = int(input()) * 60
+        curr_date = datetime.now()
+        end_time = curr_date + timedelta(minutes=int(track_time))
+        file_name = SAVE_FILE_DIR + str(s_id) + "_track_post"
+        try:
+            post_data = open_file(file_name)
+        except OSError:
+            post_data = []
 
-    print(str(s_id) + " is now being tracked")
+        print(str(s_id) + " is now being tracked")
 
-    # Threadpool may be better. If user tries to monitor too many posts then it creates too many threads
-    # Also need to check if the context switch is switching in the designated interval length
-    args = [post_data, interval_length, end_time, file_name, s_id]
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future = executor.submit(track_post, post_data, interval_length, end_time, file_name, s_id)
+        # Threadpool may be better. If user tries to monitor too many posts then it creates too many threads
+        # Also need to check if the context switch is switching in the designated interval length
+        args = [post_data, interval_length, end_time, file_name, s_id]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(track_post, post_data, interval_length, end_time, file_name, s_id)
+            input_parsing()
+
+    except prawcore.exceptions.NotFound:
+        print("We couldn't find the post you're looking for. Check to see if the id is correct or if the post still "
+              "exist")
         input_parsing()
-
-        result_val = future.result()
-
-    plot_line_chart(result_val)
 
 
 # https://medium.com/greedygame-engineering/an-elegant-way-to-run-periodic-tasks-in-python-61b7c477b679
@@ -130,6 +142,7 @@ def track_post(post_data, interval_length, end_time, file_name, s_id):
         curr_date = datetime.now()
         score, upvote_ratio, num_comments = retrieve_post_info(s_id)
 
+    print("Finished tracking " + str(s_id))
     return post_data
 
 
@@ -148,6 +161,22 @@ def plot_pie_chart(new_submissions):
     print(df)
     df.plot.pie(y=0)
     plt.show()
+
+
+def init_plot_line():
+    print("Select a File:\n")
+
+    for files in os.listdir(".\data"):
+        file_name, ext = os.path.splitext(files)
+        if ext == '':
+            print(file_name)
+    try:
+        file_name = SAVE_FILE_DIR + str(input())
+        post_data = open_file(file_name)
+        plot_line_chart(post_data)
+    except OSError:
+        print("Unable to open the File, check if the file is still there?")
+    input_parsing()
 
 
 # https://stackabuse.com/reading-and-writing-excel-files-in-python-with-the-pandas-library
@@ -186,7 +215,8 @@ def parse_submissions(submissions, new_submissions, popular_submissions, has_dic
     for submission in submissions:
         subreddit = submission.subreddit.display_name
         if subreddit in new_submissions.keys():
-            if subreddit not in popular_submissions.keys() or submission.id not in popular_submissions[subreddit]['ids']:
+            if subreddit not in popular_submissions.keys() or submission.id not in popular_submissions[subreddit][
+                'ids']:
                 new_submissions[subreddit]['num'] = new_submissions[subreddit]['num'] + 1
                 if subreddit in top_subreddits:
                     top_subreddits[subreddit] = new_submissions[subreddit]['num']
@@ -217,7 +247,7 @@ def input_parsing():
         path = os.path.join("./", "data")
         os.mkdir(path)
 
-    print("Search through: [subreddit | users | popular | posts | track post]")
+    print("Search through: [subreddit | users | popular | posts | track post | plot line graph | exit]")
     user_input = input()
     if user_input == 'subreddit':
         subreddit()
@@ -227,9 +257,30 @@ def input_parsing():
         posts()
     elif user_input == 'track post':
         init_track_post()
-    else:
+    elif user_input == 'popular':
         popular()
+    elif user_input == 'plot line graph':
+        init_plot_line()
+    elif user_input == 'exit':
+        print("Do you really want to exit? [Y/N]")
+        if input() == 'Y':
+            exit()
+        input_parsing()
 
+    else:
+        print("Sorry, we couldn't understand what that input was")
+        input_parsing()
+
+
+# https://stackoverflow.com/questions/52784989/how-do-i-handle-a-secret-api-key-when-i-push-to-github-so-that-my
+# -project-is-sti
+try:
+    with open("./.secret/client_secrets.json") as file:
+        client_secrets = json.load(file)
+
+except FileNotFoundError:
+    print("Unable to gain access to necessary keys")
+    exit()
 
 reddit = praw.Reddit(
     client_id='',
