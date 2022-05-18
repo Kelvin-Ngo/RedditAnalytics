@@ -1,5 +1,5 @@
 # RedditAnalytics
-RedditAnalysis is a python script that does basic data gathering from Reddit.
+RedditAnalytics is a python script that does basic data gathering from Reddit.
 
 # Features
 * Analyze and find the most popular subreddits and what percentage they make up of traffic on Reddit
